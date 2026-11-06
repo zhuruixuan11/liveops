@@ -40,7 +40,7 @@ def post_danmaku(session_id: int, payload: DanmakuIn, db: Session = Depends(get_
                 "nickname": dm.nickname or "",
                 "content": dm.content or "",
                 "intent": dm.intent or "",
-                "ts": dm.created_at.isoformat() if dm.created_at else datetime.utcnow().isoformat(),
+                "ts": dm.created_at.isoformat() if dm.created_at else datetime.now().isoformat(),
             },
             maxlen=1000,
         )

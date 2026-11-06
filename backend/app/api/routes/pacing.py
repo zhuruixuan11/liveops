@@ -366,7 +366,7 @@ def pacing_state(session_id: int,
     session = db.scalar(select(LiveSession).where(LiveSession.session_id == session_id))
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
-    return _build_state(db, session, duration, datetime.utcnow())
+    return _build_state(db, session, duration, datetime.now())
 
 
 @router.post("/{session_id}/advance")
@@ -376,10 +376,10 @@ def pacing_advance(session_id: int, duration: int = Query(60, ge=10, le=240),
     session = db.scalar(select(LiveSession).where(LiveSession.session_id == session_id))
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
-    state = _build_state(db, session, duration, datetime.utcnow())
+    state = _build_state(db, session, duration, datetime.now())
     plan = state["phases"]
     next_idx = min(state["phase"]["index"] + 1, len(plan) - 1)
-    base = datetime.utcnow() - timedelta(minutes=plan[next_idx]["start_min"])
+    base = datetime.now() - timedelta(minutes=plan[next_idx]["start_min"])
     try:
         r = get_sync_redis()
         r.hset(f"pacing:{session_id}", "base_ts", base.isoformat())
@@ -397,7 +397,7 @@ def pacing_reset(session_id: int,
         raise HTTPException(status_code=404, detail="session not found")
     try:
         r = get_sync_redis()
-        r.hset(f"pacing:{session_id}", "base_ts", datetime.utcnow().isoformat())
+        r.hset(f"pacing:{session_id}", "base_ts", datetime.now().isoformat())
     except Exception:
         raise HTTPException(status_code=503, detail="节奏状态存储不可用，请稍后重试")
     return {"ok": True, "phase_index": 0, "phase_name": PHASES[0]["name"]}

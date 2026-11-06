@@ -84,7 +84,7 @@ def _resolve_session(db: Session, account: PlatformAccount, store_id: int) -> in
             store_id=store_id,
             host_id=_resolve_host(db, store_id),
             title=title,
-            start_time=datetime.utcnow(),
+            start_time=datetime.now(),
             status="living",
             viewer_count=0,
             peak_viewer=0,
@@ -157,7 +157,7 @@ def sync_orders(db: Session, account: PlatformAccount) -> PlatformSyncLog:
                     subtotal=price * qty,
                 ))
             created += 1
-        account.last_sync_at = datetime.utcnow()
+        account.last_sync_at = datetime.now()
         log.created_count, log.updated_count = created, updated
         log.message = f"拉取 {log.fetched} 单，新增 {created}，更新 {updated}"
     except DouyinApiError as e:
@@ -166,7 +166,7 @@ def sync_orders(db: Session, account: PlatformAccount) -> PlatformSyncLog:
     except Exception as e:  # noqa: BLE001
         log.status = "FAILED"
         log.message = f"同步异常: {e}"[:480]
-    log.finished_at = datetime.utcnow()
+    log.finished_at = datetime.now()
     db.add(log)
     db.commit()
     return log
@@ -231,7 +231,7 @@ def sync_products(db: Session, account: PlatformAccount) -> PlatformSyncLog:
                         price=price,
                         stock=stock,
                     ))
-        account.last_sync_at = datetime.utcnow()
+        account.last_sync_at = datetime.now()
         log.created_count, log.updated_count = created, updated
         log.message = f"拉取 {log.fetched} 个商品，新增 {created}，更新 {updated}"
     except DouyinApiError as e:
@@ -240,7 +240,7 @@ def sync_products(db: Session, account: PlatformAccount) -> PlatformSyncLog:
     except Exception as e:  # noqa: BLE001
         log.status = "FAILED"
         log.message = f"同步异常: {e}"[:480]
-    log.finished_at = datetime.utcnow()
+    log.finished_at = datetime.now()
     db.add(log)
     db.commit()
     return log
@@ -282,13 +282,13 @@ def sync_sessions(db: Session, account: PlatformAccount) -> PlatformSyncLog:
                     store_id=store_id,
                     host_id=_resolve_host(db, store_id),
                     title=title,
-                    start_time=_parse_time(ext.get("start_time")) or datetime.utcnow(),
+                    start_time=_parse_time(ext.get("start_time")) or datetime.now(),
                     status=status,
                     viewer_count=viewer,
                     peak_viewer=viewer,
                 ))
                 created += 1
-        account.last_sync_at = datetime.utcnow()
+        account.last_sync_at = datetime.now()
         log.created_count, log.updated_count = created, updated
         log.message = f"拉取 {log.fetched} 个直播间，新增 {created}，更新 {updated}"
     except DouyinApiError as e:
@@ -297,7 +297,7 @@ def sync_sessions(db: Session, account: PlatformAccount) -> PlatformSyncLog:
     except Exception as e:  # noqa: BLE001
         log.status = "FAILED"
         log.message = f"同步异常: {e}"[:480]
-    log.finished_at = datetime.utcnow()
+    log.finished_at = datetime.now()
     db.add(log)
     db.commit()
     return log

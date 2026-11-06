@@ -50,7 +50,7 @@ export const api = {
   // orders
   listOrders: (params?: any) => client.get('/orders', { params }),
   getOrder: (id: string | number) => client.get(`/orders/${id}`),
-  createOrder: (payload: any) => client.post('/orders/', payload),
+  createOrder: (payload: any) => client.post('/orders', payload),
   payOrder: (id: string | number) => client.post(`/orders/${id}/pay`),
 
   // dashboard

@@ -67,7 +67,10 @@ def route_node(state: AgentState) -> str:
 
 
 def faq_node(state: AgentState) -> AgentState:
-    llm = get_llm()
+    try:
+        llm = get_llm()
+    except Exception:
+        llm = None
     reply = ""
     if state["intent"] in ("faq_product",):
         with SessionLocal() as db:
@@ -80,11 +83,17 @@ def faq_node(state: AgentState) -> AgentState:
     elif state["intent"] in ("logistics", "faq_policy"):
         reply = replies.logistics_reply(state.get("nickname"))
     else:
-        resp = llm.chat(settings.llm_light_model, [
-            {"role": "system", "content": "你是直播间场控助手，语气活泼友好，一句话回复，不超过 50 字。"},
-            {"role": "user", "content": state["content"]}
-        ])
-        reply = resp.get("content") or replies.general_fallback(state.get("nickname"))
+        try:
+            resp = llm.chat(settings.llm_light_model, [
+                {"role": "system", "content": "你是直播间场控助手，语气活泼友好，一句话回复，不超过 50 字。"},
+                {"role": "user", "content": state["content"]}
+            ]) if llm else {}
+            reply = resp.get("content") or ""
+        except Exception:
+            # 大模型超时/额度用尽时降级为模板话术，避免观众弹幕石沉大海
+            reply = ""
+    if not reply:
+        reply = replies.general_fallback(state.get("nickname"))
     send_danmaku_reply(state["session_id"], reply, state["msg_id"])
     return {**state, "reply": reply}
 

@@ -1,0 +1,5 @@
+# Shell 脚本必须用 LF，否则容器/Linux 下无法执行
+*.sh text eol=lf
+# Windows 脚本保持 CRLF，方便双击运行
+*.ps1 text eol=crlf
+*.png binary

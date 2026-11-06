@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, scope_staff_id
 from app.models.all import (
     LiveSession, Danmaku, SalesOrder, MonitorEvent, Staff, Store,
 )
@@ -64,14 +64,14 @@ def session_traffic(session_id: int, db: Session = Depends(get_db),
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
 
-    base = session.start_time or datetime.utcnow()
+    base = session.start_time or datetime.now()
     danmakus = db.scalars(select(Danmaku).where(Danmaku.session_id == session_id)).all()
     orders = db.scalars(select(SalesOrder).where(SalesOrder.session_id == session_id)).all()
 
     # 时间范围：开播 -> 结束或最后一条动态
     activity = [t for t in
                 [d.created_at for d in danmakus] + [o.create_time for o in orders] if t]
-    start = session.start_time or datetime.utcnow()
+    start = session.start_time or datetime.now()
     end = session.end_time or (max(activity) if activity else start)
     if end <= start:
         end = start + timedelta(minutes=BUCKET_MINUTES * 6)
@@ -269,8 +269,8 @@ def session_review(session_id: int, db: Session = Depends(get_db),
 
 @router.get("/hosts/rank")
 def host_rank(days: int = Query(30, ge=1, le=365),
-              db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
-    since = datetime.utcnow() - timedelta(days=days)
+              db: Session = Depends(get_db), user: dict = Depends(get_current_user)):
+    since = datetime.now() - timedelta(days=days)
     sessions = db.scalars(
         select(LiveSession).where(LiveSession.start_time >= since)
     ).all()
@@ -314,6 +314,9 @@ def host_rank(days: int = Query(30, ge=1, le=365),
             "conversion_rate": conv,
             "avg_ticket": round(row["gmv"] / row["orders"], 2) if row["orders"] else 0,
         })
+    scope = scope_staff_id(user, db)
+    if scope is not None:
+        result = [r for r in result if r["host_id"] == scope]
     result.sort(key=lambda x: -x["gmv"])
     for i, r in enumerate(result, start=1):
         r["rank"] = i

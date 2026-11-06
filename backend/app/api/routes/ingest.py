@@ -130,7 +130,7 @@ def ingest_danmaku(payload: IngestIn,
     if not session:
         raise HTTPException(status_code=404, detail="session not found")
 
-    now = datetime.utcnow()
+    now = datetime.now()
     seen = set()
     rows: List[Danmaku] = []
     filtered = 0
@@ -206,7 +206,7 @@ def ingest_danmaku(payload: IngestIn,
 def ingest_heartbeat(payload: HeartbeatIn,
                      x_ingest_token: Optional[str] = Header(None, alias="X-Ingest-Token")):
     _check_token(payload.token, x_ingest_token)
-    now = datetime.utcnow()
+    now = datetime.now()
     try:
         r = get_sync_redis()
         key = f"ingest:heart:{payload.session_id}"
@@ -226,7 +226,7 @@ def ingest_heartbeat(payload: HeartbeatIn,
 @router.get("/status")
 def ingest_status(session_id: int = Query(..., ge=1),
                   db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
     today_count = db.scalar(
         select(func.count()).select_from(Danmaku).where(
@@ -245,7 +245,7 @@ def ingest_status(session_id: int = Query(..., ge=1),
         select(func.max(Danmaku.created_at)).where(Danmaku.session_id == session_id)
     )
 
-    since_24h = datetime.utcnow() - timedelta(hours=24)
+    since_24h = datetime.now() - timedelta(hours=24)
     intent_rows = db.execute(
         select(Danmaku.intent, func.count(Danmaku.msg_id))
         .where(Danmaku.session_id == session_id, Danmaku.created_at >= since_24h)
@@ -264,7 +264,7 @@ def ingest_status(session_id: int = Query(..., ge=1),
             heart["filtered_total"] = state.get("filtered", "0")
             ts = datetime.fromisoformat(heart["ts"]) if heart.get("ts") else None
             if ts:
-                heartbeat_age = int((datetime.utcnow() - ts).total_seconds())
+                heartbeat_age = int((datetime.now() - ts).total_seconds())
                 connected = heartbeat_age < 90
     except Exception:
         pass

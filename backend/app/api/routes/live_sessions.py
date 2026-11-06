@@ -6,6 +6,7 @@ from sqlalchemy import select, func, update
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.deps import get_current_user, scope_staff_id
 from app.models.all import LiveSession, LiveProduct, Store, Staff, Product, SalesOrder, CouponIssue, SkuInfo
 from app.schemas.all import (
     LiveSessionCreate, LiveSessionUpdate, StatusUpdate,
@@ -25,7 +26,7 @@ def _attach_store_host(session_out: dict, session: LiveSession, db: Session) -> 
     return session_out
 
 
-@router.get("/", response_model=PageResp[LiveSessionOut])
+@router.get("", response_model=PageResp[LiveSessionOut])
 def list_sessions(
     store_id: Optional[int] = Query(None),
     status: Optional[str] = Query(None),
@@ -33,7 +34,11 @@ def list_sessions(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
+    host_scope = scope_staff_id(user, db)
+    if host_scope is not None:
+        host_id = host_scope
     stmt = select(LiveSession)
     if store_id:
         stmt = stmt.where(LiveSession.store_id == store_id)
@@ -63,7 +68,7 @@ def list_sessions(
     return PageResp(total=total or 0, items=out_items, page=page, size=size)
 
 
-@router.post("/", response_model=LiveSessionOut)
+@router.post("", response_model=LiveSessionOut)
 def create_session(payload: LiveSessionCreate, db: Session = Depends(get_db)):
     session = LiveSession(
         store_id=payload.store_id,

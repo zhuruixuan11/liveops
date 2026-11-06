@@ -13,7 +13,7 @@ from app.schemas.all import (
 router = APIRouter()
 
 
-@router.get("/", response_model=PageResp[StoreOut])
+@router.get("", response_model=PageResp[StoreOut])
 def list_stores(
     city: Optional[str] = Query(None),
     status: Optional[int] = Query(None),
@@ -47,7 +47,7 @@ def get_store(store_id: int, db: Session = Depends(get_db)):
     return StoreDetailOut(**data, live_session_count=live_count, staff_count=staff_count)
 
 
-@router.post("/", response_model=StoreOut)
+@router.post("", response_model=StoreOut)
 def create_store(payload: StoreCreate, db: Session = Depends(get_db)):
     store = Store(**payload.model_dump())
     db.add(store)

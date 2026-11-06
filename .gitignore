@@ -23,3 +23,7 @@ Thumbs.db
 
 # 备份文件
 *.bak
+
+# 离线镜像包（体积大，不入库）
+liveops-offline-*.tar
+liveops-offline-*.tar.gz

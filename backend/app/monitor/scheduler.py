@@ -1,6 +1,6 @@
 """并行场控监控线：每 30s 巡检 living 场次，触发 monitor_event + Agent 主动响应。"""
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dtime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy import select, func
@@ -74,6 +74,12 @@ def check_sessions():
     with SessionLocal() as db:
         living = db.execute(select(LiveSession).where(LiveSession.status == "living")).scalars().all()
         for s in living:
+            # 0) 在线人数平滑游走（±2%~3%），避免演示时数字突兀跳变
+            if s.viewer_count and s.viewer_count > 0:
+                drift = random.uniform(-0.02, 0.03)
+                s.viewer_count = max(1, int(round(s.viewer_count * (1 + drift))))
+                s.peak_viewer = max(s.peak_viewer or 0, s.viewer_count)
+
             # 1) viewer_drop
             prev = _last_viewer_count.get(s.session_id)
             if prev and prev > 0 and (prev - s.viewer_count) / prev > VIEWER_DROP_THRESHOLD:
@@ -126,6 +132,67 @@ def check_sessions():
                     metric_value=conv, threshold=LOW_CONVERSION,
                     response=agent_reply,
                 )
+        db.commit()
+
+
+def refresh_demo_timeline() -> None:
+    """演示数据时间对齐：让「正在进行」的直播和今日订单始终贴近当前时刻。
+
+    种子数据用的是建库那一刻的相对时间，隔几个小时再演示就会全部变旧。
+    这里启动时 + 每 10 分钟做一次校正（幂等）：
+      1) living 场次开播时间保持在前 3 小时内；
+      2) 今日已支付订单均匀铺在 10:00 ~ min(现在, 22:00) 的营业时段
+         （若演示时间早于 10:00，则退化为今天 00:00 ~ 现在，保证图表不空）；
+      3) 历史订单的时分改成 10:00~21:00 的营业时段，日期保持不变。
+    """
+    if not settings.demo_mode:
+        return
+    now = datetime.now()
+    today = now.date()
+    with SessionLocal() as db:
+        living = db.execute(
+            select(LiveSession).where(LiveSession.status == "living").order_by(LiveSession.session_id)
+        ).scalars().all()
+        for idx, s in enumerate(living):
+            minutes = 70 if idx == 0 else 45
+            if not s.start_time or (now - s.start_time) > timedelta(hours=3):
+                s.start_time = now - timedelta(minutes=minutes)
+
+        biz_start = datetime.combine(today, dtime(10, 0))
+        biz_end = datetime.combine(today, dtime(22, 0))
+        end = min(now - timedelta(minutes=1), biz_end)
+        lo = biz_start
+        if end <= lo + timedelta(minutes=30):
+            # 演示跑在 10:30 之前：退化为今天 00:00 ~ 现在
+            lo = datetime.combine(today, dtime(0, 5))
+
+        todays = db.execute(
+            select(SalesOrder).where(
+                SalesOrder.status == "02",
+                func.date(SalesOrder.create_time) == today,
+            ).order_by(SalesOrder.order_id)
+        ).scalars().all()
+
+        if todays and end > lo:
+            step = (end - lo) / len(todays)
+            for i, o in enumerate(todays):
+                t = lo + step * i
+                o.pay_time = t
+                o.create_time = t - timedelta(minutes=2 + i % 9)
+
+        history = db.execute(
+            select(SalesOrder).where(
+                SalesOrder.status == "02",
+                func.date(SalesOrder.create_time) < today,
+            ).order_by(SalesOrder.order_id)
+        ).scalars().all()
+        for i, o in enumerate(history):
+            base_day = (o.create_time or now).date()
+            t = datetime.combine(base_day, dtime(10, 0)) + timedelta(minutes=(i * 37) % 660)
+            o.create_time = t
+            o.pay_time = t + timedelta(minutes=2 + i % 15)
+
+        db.commit()
 
 
 def demo_inject_danmaku():
@@ -165,9 +232,15 @@ def demo_inject_danmaku():
 
 
 def start_scheduler() -> BackgroundScheduler:
+    try:
+        refresh_demo_timeline()
+    except Exception:
+        pass
     sched = BackgroundScheduler(timezone="Asia/Shanghai")
     sched.add_job(check_sessions, "interval", seconds=30, id="monitor-check")
     if settings.demo_mode:
         sched.add_job(demo_inject_danmaku, "interval", seconds=15, id="demo-inject")
+        # 每隔 10 分钟把演示数据时间往当前时刻推一次，长时间演示也不会变旧
+        sched.add_job(refresh_demo_timeline, "interval", minutes=10, id="demo-timeline")
     sched.start()
     return sched

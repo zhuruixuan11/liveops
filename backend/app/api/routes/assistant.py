@@ -203,7 +203,7 @@ def _live_answer(db: Session, result, days: int) -> Dict[str, Any]:
     living = db.scalars(select(LiveSession).where(LiveSession.status == "living")).all()
     store_map = {s.store_id: s.name for s in db.scalars(select(Store)).all()}
     staff_map = {s.staff_id: s.name for s in db.scalars(select(Staff)).all()}
-    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     paid_today = db.scalars(
         select(SalesOrder).where(SalesOrder.status == PAID, SalesOrder.create_time >= today)
     ).all()
@@ -237,7 +237,7 @@ def assistant_query(payload: QueryIn, db: Session = Depends(get_db),
                     _: dict = Depends(get_current_user)):
     q = (payload.question or "").strip()
     days = _parse_days(q, payload.days)
-    since = datetime.utcnow() - timedelta(days=days)
+    since = datetime.now() - timedelta(days=days)
     paid_orders = db.scalars(
         select(SalesOrder).where(SalesOrder.status == PAID, SalesOrder.create_time >= since)
     ).all()
@@ -342,7 +342,7 @@ def assistant_query(payload: QueryIn, db: Session = Depends(get_db),
             key = o.create_time.strftime("%m-%d")
             buckets[key] += _money(o.pay_amount)
             cnt[key] += 1
-        days_sorted = [(datetime.utcnow() - timedelta(days=i)).strftime("%m-%d")
+        days_sorted = [(datetime.now() - timedelta(days=i)).strftime("%m-%d")
                        for i in range(days - 1, -1, -1)]
         rows = [[d, cnt.get(d, 0), round(buckets.get(d, 0), 2)] for d in days_sorted]
         answer = (f"近 {days} 天合计 GMV ¥{gmv:.2f}，{len(paid_orders)} 笔成交，"
@@ -368,7 +368,7 @@ def assistant_query(payload: QueryIn, db: Session = Depends(get_db),
 @router.post("/plan")
 def assistant_plan(payload: PlanIn, db: Session = Depends(get_db),
                    _: dict = Depends(get_current_user)):
-    since = datetime.utcnow() - timedelta(days=14)
+    since = datetime.now() - timedelta(days=14)
 
     # 热销商品
     sales_rows = db.execute(
@@ -538,7 +538,7 @@ def reply_suggestions(session_id: int = Query(..., ge=1),
 def danmaku_insights(session_id: int = Query(..., ge=1),
                      minutes: int = Query(30, ge=5, le=240),
                      db: Session = Depends(get_db), _: dict = Depends(get_current_user)):
-    now = datetime.utcnow()
+    now = datetime.now()
     since = now - timedelta(minutes=minutes)
     rows = db.scalars(
         select(Danmaku).where(

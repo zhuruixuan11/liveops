@@ -6,9 +6,11 @@ services:
   mysql:
     image: mysql:8.0
     container_name: liveops-mysql
+    command: --default-time-zone=+08:00
     ports:
       - "3306:3306"
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
@@ -60,6 +62,8 @@ services:
     container_name: liveops-backend
     env_file:
       - .env
+    environment:
+      TZ: Asia/Shanghai
     depends_on:
       mysql:
         condition: service_healthy

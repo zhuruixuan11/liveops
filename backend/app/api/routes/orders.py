@@ -8,14 +8,14 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import get_current_user, scope_staff_id
 from app.models.all import SalesOrder, SalesOrderDetail, LiveSession, PaymentRecord, SkuInfo, Product, Coupon
 from app.schemas.all import OrderOut, OrderDetailOut, PayRequest, OrderCreate, PageResp
 
 router = APIRouter()
 
 
-@router.post("/", response_model=OrderOut)
+@router.post("", response_model=OrderOut)
 def create_order(
     payload: OrderCreate,
     db: Session = Depends(get_db),
@@ -92,7 +92,7 @@ def create_order(
     return order
 
 
-@router.get("/", response_model=PageResp[OrderOut])
+@router.get("", response_model=PageResp[OrderOut])
 def list_orders(
     session_id: Optional[int] = Query(None),
     store_id: Optional[int] = Query(None),
@@ -101,7 +101,11 @@ def list_orders(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
 ):
+    host_scope = scope_staff_id(user, db)
+    if host_scope is not None:
+        host_id = host_scope
     stmt = select(SalesOrder)
     if session_id:
         stmt = stmt.where(SalesOrder.session_id == session_id)
@@ -155,7 +159,7 @@ def pay_order(order_id: str, payload: PayRequest, db: Session = Depends(get_db))
         raise HTTPException(status_code=400, detail="already paid")
 
     order.status = "02"
-    order.pay_time = datetime.utcnow()
+    order.pay_time = datetime.now()
 
     rec = PaymentRecord(
         order_id=order.order_id,

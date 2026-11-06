@@ -48,5 +48,15 @@ def require_role(*roles: str):
     return _check
 
 
+def scope_staff_id(user: dict, db) -> Optional[int]:
+    """主播只能看自己的数据；返回 None 表示不限制（管理员）。"""
+    if user.get("role") != "HOST":
+        return None
+    from app.models.all import Staff
+    from sqlalchemy import select
+    staff = db.scalar(select(Staff).where(Staff.user_id == int(user["sub"])))
+    return staff.staff_id if staff else -1
+
+
 def gen_request_id() -> str:
     return f"{int(time.time()*1000)}-{uuid.uuid4().hex[:8]}"

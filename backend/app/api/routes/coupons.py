@@ -13,7 +13,7 @@ from app.schemas.all import CouponCreate, CouponOut, CouponIssueOut, CouponDetai
 router = APIRouter()
 
 
-@router.get("/", response_model=list[CouponOut])
+@router.get("", response_model=list[CouponOut])
 def list_coupons(
     session_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -24,7 +24,7 @@ def list_coupons(
     return db.scalars(stmt.order_by(Coupon.coupon_id.desc())).all()
 
 
-@router.post("/", response_model=CouponOut)
+@router.post("", response_model=CouponOut)
 def create_coupon(payload: CouponCreate, db: Session = Depends(get_db)):
     coupon = Coupon(**payload.model_dump())
     db.add(coupon)

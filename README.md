@@ -1,133 +1,214 @@
-# 连锁门店直播运营平台
+# LiveOps · 连锁门店直播运营平台
 
-业务中台 + 实时场控 Agent 的全栈项目。门店/商品/直播/券/订单/销售看板主链路 + 弹幕削峰 → 意图路由 → AI 自动处理/转人工的场控 Agent + 并行监控线（人数/库存/转化自动响应）。
+一套可直接演示的「老板端 + 主播端」直播运营系统：门店/商品/直播/优惠券/订单/销售看板全链路，加上弹幕实时处理 Agent（意图识别 → 自动回复/发券/查库存/转人工）与并行监控线（掉线、库存、转化异常自动告警）。
+
+前后端 + MySQL/Redis/PostgreSQL 全部容器化，**一条命令启动**，无 LLM Key 也能完整演示。
 
 ---
 
-## 快速启动
+## 界面预览
+
+| 老板端 · 首页概览 | 老板端 · 销售看板 |
+| --- | --- |
+| ![首页](docs/screenshots/02-home.png) | ![销售看板](docs/screenshots/03-dashboard.png) |
+
+| 主播端 · 工作台 | 登录页 |
+| --- | --- |
+| ![主播工作台](docs/screenshots/04-host-dashboard.png) | ![登录](docs/screenshots/01-login.png) |
+
+---
+
+## 快速开始
+
+### 方式一：一键脚本（推荐）
+
+```bash
+# macOS / Linux / WSL
+./start.sh
+```
 
 ```powershell
-cd liveops                       # 进入解压后的项目根目录
-Copy-Item .env.example .env      # 可选：填 LLM_API_KEY（无 Key 自动降级 jieba 规则分类）
+# Windows PowerShell
+.\start.ps1
+```
+
+脚本会自动：检查 `.env` → 检查 Docker → 构建并启动 5 个容器 → 等待健康检查通过 → 打印访问地址。
+
+### 方式二：手动命令
+
+```bash
+cp .env.example .env          # 可选：填写 LLM_API_KEY 开启 AI 话术，留空自动降级
 docker compose --profile ui up -d --build
 ```
 
-启动后：
-- 前端：http://localhost
-- 后端健康：http://localhost/api/health
-- 后端就绪：http://localhost/api/health/ready
-- Prometheus 指标：http://localhost/api/metrics
+### 方式三：离线镜像包（目标机器无外网）
 
-默认账号（密码均为 `123456`）：
-| 用户名 | 角色 |
-|--------|------|
-| admin1 | ADMIN 管理员 |
-| op1 ~ op12 | OPERATOR 场控坐席 |
-| host1 ~ host12 | HOST 主播 |
-| customer1 ~ customer5 | CUSTOMER 顾客 |
+在有网机器上导出：
 
-启动 Milvus 向量库（RAG 增强，可选）：
-```powershell
-docker compose --profile tools up -d
+```bash
+./export-offline.sh           # 生成 liveops-offline-YYYYMMDD.tar.gz（约 1~2 GB）
 ```
 
-启动弹幕回放（驱动 Agent 演示）：
-```powershell
-docker compose --profile replay up -d
+把压缩包 + 项目目录拷给对方，对方执行：
+
+```bash
+./import-offline.sh liveops-offline-YYYYMMDD.tar.gz
 ```
+
+Windows 使用同名 `.ps1` 脚本即可。
 
 ---
 
-## 架构
+## 访问地址与账号
 
-```
-弹幕流入 → Redis Streams 削峰/背压 → Supervisor 意图分类(小模型/jieba降级)
-  ├ FAQ  → RAG/商品库自动回复
-  ├ COUPON → 发券工具(超预算转HITL)
-  ├ STOCK → 查库存实时回复
-  ├ HUMAN → 转人工待办
-  └ FILTER → 静默过滤
-并行监控线(APScheduler 30s): viewer_drop / stock_alert / low_conversion / peak_focus
-```
+| 项目 | 地址 |
+| --- | --- |
+| 老板端 / 主播端 | http://localhost:8088 |
+| 健康检查 | http://localhost:8088/api/health |
+| 就绪检查 | http://localhost:8088/api/health/ready |
 
-- MySQL 8：门店/商品/直播/券/订单/弹幕/agent_action/monitor_event
-- Redis 7：弹幕队列削峰 + 缓存/限流
-- PostgreSQL 16：Agent 记忆/决策/审计（已部署，当前版本 Agent 数据与业务统一存 MySQL，可配置切换）
-- Milvus + etcd + MinIO：知识库向量检索（profile tools，可选）
+演示账号（密码统一 `123456`）：
+
+| 用户名 | 角色 | 说明 |
+| --- | --- | --- |
+| `admin1` | ADMIN | 老板 / 管理员，看全部门店与主播 |
+| `host6` | HOST | 主播，只能看到自己的场次与订单 |
+| `op1` ~ `op12` | OPERATOR | 场控坐席 |
+| `customer1` ~ `customer5` | CUSTOMER | 顾客端账号 |
+
+> 主播端已做数据隔离：HOST 登录后接口层强制按自己的 `staff_id` 过滤场次、订单与主播排行。
 
 ---
 
-## API 接口
+## 功能地图
 
-前缀 `/api/v1`
+### 老板端（结果导向，一眼看清）
+
+- **首页概览**：门店数、直播中场次与在线人数、近 7 天 GMV / 订单、今日成交按小时趋势
+- **销售看板**：近 7 天汇总、门店 GMV 排行、异常门店预警（环比下滑 > 30%），可下钻查看门店与最近场次
+- **直播场次**：场次列表、状态流转、场次实时看板
+- **主播绩效**：主播 GMV / 场次 / 转化率排行
+- **订单**：订单列表、订单详情（金额、优惠、支付时间、商品明细）
+
+### 主播端（开播即用）
+
+- **工作台**：累计场次、当前在线、历史峰值、今日推荐内容（主推 / 集中回应 / 借势热点 / 限量开抢）
+- **直播间**：弹幕流 + AI 自动回复 + 一键转人工、直播节奏计时与阶段提示、实时 KPI
+- **流量复盘**：本场流量与成交曲线
+- **我的订单**：只含本主播场次订单
+
+### 场控 Agent
+
+```
+弹幕流入 → Redis Streams 削峰 → 意图分类（LLM / jieba 规则降级）
+  ├ FAQ      → RAG / 商品库自动回复
+  ├ 要券     → 自动发券（超预算转人工）
+  ├ 库存     → 实时查库存回复
+  ├ 售后/投诉 → 转人工待办
+  └ 广告刷屏 → 静默过滤
+并行监控线（每 30s）：viewer_drop / stock_alert / low_conversion / peak_focus
+```
+
+演示模式（`DEMO_MODE=true`）下还会：
+
+- 每 15~40s 自动注入真实感弹幕，走完整 Agent 链路并回写 AI 回复
+- 在线人数做 ±2%~3% 平滑游走，避免数字突兀跳变
+- 每 10 分钟把「直播中场次」和「今日订单」的时间推到当前时刻，长时间演示数据也不会变旧
+
+---
+
+## 核心接口
+
+前缀 `/api/v1`，除登录/注册外均需 `Authorization: Bearer <access_token>`。
 
 | 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | `/stores` | 门店列表（城市/状态/分页） |
-| GET/POST/PUT | `/stores/{id}` | 门店详情/增改 |
-| GET | `/products` | 商品列表（分类/搜索/排序/分页） |
-| GET | `/products/{id}` | 商品详情（含 SKU/库存） |
-| GET | `/products/categories` | 分类树 |
-| GET/POST | `/live-sessions` | 直播场次列表/创建 |
-| PUT | `/live-sessions/{id}/status` | 开播/结束状态流转 |
+| --- | --- | --- |
+| POST | `/auth/login` | 登录，返回 `access_token` |
+| GET | `/auth/me` | 当前用户信息 |
+| GET | `/dashboard/home` | 首页概览 |
+| GET | `/dashboard/intraday` | 今日按小时成交趋势 |
+| GET | `/dashboard/sales` | 销售汇总（含异常门店） |
+| GET | `/dashboard/store-rank` | 门店 GMV 排行 |
+| GET | `/live-sessions` | 直播场次列表（HOST 自动收敛） |
+| PUT | `/live-sessions/{id}/status` | 开播 / 下播 |
 | GET | `/live-sessions/{id}/dashboard` | 场次实时看板 |
-| GET/POST | `/coupons` | 优惠券配置 |
-| GET | `/orders` `/orders/{id}` | 订单列表/详情 |
-| POST | `/orders/{id}/pay` | 模拟支付 |
-| GET | `/dashboard/sales` | 销售看板（异常门店高亮） |
-| POST | `/auth/register` `/auth/login` | 认证 |
+| GET | `/orders` | 订单列表（HOST 自动收敛） |
+| GET | `/orders/{id}` | 订单详情 |
 | POST | `/live/{session_id}/danmaku` | 投递弹幕 |
-| WS | `/live/{session_id}/stream` | 实时弹幕流+Agent决策推送 |
-| GET | `/live/{session_id}/agent-actions` | Agent 决策日志 |
-| GET | `/live/{session_id}/monitor-events` | 监控事件 |
-| GET | `/operator/tickets` | 人工待办队列（OPERATOR） |
-| POST | `/operator/tickets/{msg_id}/claim/resolve/close` | 领取/处置/关闭 |
+| GET | `/live/{session_id}/danmaku` | 拉取弹幕与 AI 回复 |
+| POST | `/live/{session_id}/danmaku/{msg_id}/manual-reply` | 人工回复 |
+| WS | `/live/{session_id}/stream` | 实时弹幕 + Agent 决策推送 |
+| GET | `/pacing/{session_id}` | 直播节奏状态 |
+| GET | `/analytics/hosts/rank` | 主播绩效排行 |
 
 ---
 
-## 直播场控 Agent 演示脚本
+## 8 分钟演示动线
 
-### 场景 1：弹幕自动分流全链路
-
-1. 用 `admin1` 登录，进入「直播场次」→ 找到 living 场次 →「进入场控」
-2. 启动弹幕回放（或手动发弹幕）：
-   ```powershell
-   docker compose --profile replay up -d
-   ```
-3. 场控页中栏实时显示弹幕，每条标注意图 tag（咨询/要券/库存/转人工/垃圾）
-4. 右栏滚动 Agent 决策日志：`intent_classify → send_danmaku_reply / issue_coupon / query_stock / create_human_ticket`
-
-### 场景 2：自动发券 + 预算护栏转人工
-
-1. 弹幕输入「有没有优惠券」→ Agent 自动调 `issue_coupon` 发券
-2. 当本场发券累计成本超 `COUPON_DAILY_BUDGET`（默认 5000）→ 强制转人工待办
-3. 用 `op1` 登录 →「坐席工作台」→ 领取待办 → 处置 → 关闭
-
-### 场景 3：并行监控线自动响应
-
-种子数据预置了 2 场 living：
-- session 1（美妆场）：主推 SKU 库存仅剩 8 → 触发 `stock_alert` 监控事件
-- session 2（家居场）：转化率 0.02 → 触发 `low_conversion` → Agent 自动发券促转化
-
-监控线每 30s 巡检，事件实时推送到场控页右栏。
-
-### 场景 4：恶意刷屏静默过滤
-
-弹幕输入广告内容（含「加微信」「扫码」等关键词）→ 意图分类为 `spam` → `FILTER` 静默，前端不显示回复，`handled_by=FILTERED`。
-
-### 场景 5：投诉/退换货转人工
-
-弹幕输入「我要退货」「你们这是假货」→ `aftersale`/`complaint` → `HUMAN` → 生成坐席待办，弹幕回复「已转人工处理」。
+1. `admin1` 登录 → 首页看今日趋势与在线人数
+2. 进入「销售看板」→ 点异常门店卡片 → 下钻门店详情
+3. 进入「直播场次」→ living 场次「进入直播间」
+4. 主播端看弹幕自动回复 → 点一条转人工 → 亲自回复
+5. 看右栏监控事件与节奏提示
+6. 下播 → 自动进入本场复盘
+7. 换 `host6` 登录 → 工作台只看到自己的 2 场直播与自己的订单
 
 ---
 
-## 降级说明
+## 降级与容错
 
-无 `LLM_API_KEY` 时：
-- 意图分类走 jieba 关键词规则（`intent.classify`）
-- FAQ 回复走商品库静态模板
-- 主链路完全可演示，仅无 LLM 智能感
+| 场景 | 行为 |
+| --- | --- |
+| 未配置 `LLM_API_KEY` | 意图分类走 jieba 关键词规则，回复走模板话术，主链路完整可演示 |
+| LLM 调用失败 / 超时 | 自动回落到模板话术，不阻断弹幕回复 |
+| Milvus 未启动 | 跳过 RAG 检索，FAQ 使用商品描述 |
+| 后端重启 | 容器内定时任务自动恢复，演示数据时间自动对齐当前时刻 |
 
-Milvus 未启动时：
-- RAG 检索跳过，FAQ 返回商品描述
-- 不影响其他功能
+---
+
+## 测试与 CI
+
+```bash
+cd backend
+pip install -r requirements.txt pytest
+pytest -q
+```
+
+GitHub Actions（`.github/workflows/ci.yml`）：
+
+- `backend-tests`：安装依赖并执行 pytest
+- `docker-smoke`：构建整套容器 → 等待健康检查 → 校验登录与 7 个核心接口均返回 200
+
+---
+
+## 目录结构
+
+```
+liveops/
+├── backend/                 # FastAPI + SQLAlchemy + APScheduler
+│   ├── app/
+│   │   ├── api/routes/      # 业务接口
+│   │   ├── agent/           # 意图分类 / Agent 图 / 话术
+│   │   ├── monitor/         # 定时巡检 + 演示数据维护
+│   │   ├── models/          # ORM 模型
+│   │   └── core/            # 配置 / 数据库 / 鉴权 / 依赖
+│   └── tests/               # pytest 用例
+├── frontend/                # Vue 3 + TypeScript + Element Plus + ECharts
+├── init/mysql/              # 建表与种子数据（含异常门店演示数据）
+├── docs/screenshots/        # README 截图
+├── docker-compose.yml
+├── start.sh / start.ps1
+└── export-offline.sh / import-offline.sh
+```
+
+---
+
+## 常见问题
+
+**端口 8088 被占用？** 修改 `docker-compose.yml` 中 frontend 的 `ports`，例如 `"8090:80"`。
+
+**首次启动较慢？** 需要拉取 MySQL/Redis/PostgreSQL/Python/Node 基础镜像，后续启动为秒级。
+
+**改了代码不生效？** 代码是打进镜像的，需要 `docker compose --profile ui up -d --build`；一键脚本已包含 `--build`。
+
+**想清空数据重来？** `docker compose --profile ui down -v` 后重新启动即可。
