@@ -1,0 +1,160 @@
+html, body, #app { height: 100%; margin: 0; }
+
+/* ============ 设计令牌 ============ */
+:root {
+  --lo-primary: #3b6ef5;
+  --lo-primary-soft: rgba(59, 110, 245, 0.09);
+  --lo-accent: #7c5cff;
+  --lo-success: #22c55e;
+  --lo-warning: #f59e0b;
+  --lo-danger: #f43f5e;
+  --lo-bg: #f4f6fb;
+  --lo-surface: #ffffff;
+  --lo-text: #1f2430;
+  --lo-text-sub: #6b7280;
+  --lo-text-muted: #9aa3b2;
+  --lo-border: #edf0f5;
+  --lo-radius: 14px;
+  --lo-radius-sm: 10px;
+  --lo-shadow: 0 2px 8px rgba(24, 39, 75, 0.05), 0 8px 24px rgba(24, 39, 75, 0.04);
+  --lo-shadow-hover: 0 6px 16px rgba(24, 39, 75, 0.08), 0 16px 40px rgba(24, 39, 75, 0.07);
+  --lo-gap: 16px;
+}
+
+body {
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  color: var(--lo-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.el-container { height: 100%; }
+.el-aside { background: #0d1524; color: #fff; overflow-y: auto; }
+.el-aside .el-menu { border-right: none; background: transparent; }
+.el-header { background: var(--lo-surface); border-bottom: 1px solid var(--lo-border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
+.el-main { background: var(--lo-bg); padding: 20px; overflow: auto; }
+
+/* ============ 页面头部（全局统一，页面内无需重复定义）============ */
+.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; gap: 16px; }
+.page-title { font-size: 21px; font-weight: 700; color: var(--lo-text); letter-spacing: -0.2px; }
+.page-sub { color: var(--lo-text-sub); font-size: 13px; margin-top: 5px; }
+
+/* ============ 卡片 ============ */
+.el-card {
+  border-radius: var(--lo-radius) !important;
+  border: 1px solid var(--lo-border) !important;
+  box-shadow: var(--lo-shadow) !important;
+  transition: box-shadow 0.22s ease, transform 0.22s ease;
+  overflow: hidden;
+}
+.el-card:hover { box-shadow: var(--lo-shadow-hover) !important; }
+.el-card__header { border-bottom: 1px solid var(--lo-border) !important; padding: 14px 18px !important; }
+.el-card__body { padding: 18px !important; }
+
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.card-head b { font-size: 14px; color: var(--lo-text); }
+
+/* ============ KPI 卡（统一样式，页面只需套 class）============ */
+.kpi-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 20px;
+  background: var(--lo-surface);
+  border-radius: var(--lo-radius);
+  border: 1px solid var(--lo-border);
+  box-shadow: var(--lo-shadow);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+  height: 100%;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: var(--lo-shadow-hover); }
+.kpi-icon {
+  width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+.kpi-value { font-size: 25px; font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; font-variant-numeric: tabular-nums; }
+.kpi-label { font-size: 12px; color: var(--lo-text-sub); margin-top: 5px; }
+
+/* ============ 表格 ============ */
+.el-table { border-radius: var(--lo-radius-sm); font-size: 13px; --el-table-border-color: var(--lo-border); }
+.el-table th.el-table__cell {
+  background: #f8fafc !important;
+  color: var(--lo-text-sub) !important;
+  font-weight: 600 !important;
+  font-size: 12px;
+}
+.el-table .el-table__row:hover > td.el-table__cell { background: #f7f9ff !important; }
+.el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell { background: #fcfdff; }
+
+/* ============ 按钮 / 标签 ============ */
+.el-button { border-radius: 9px; font-weight: 500; }
+.el-button.is-round { border-radius: 999px; }
+.el-tag { border-radius: 7px; }
+
+/* ============ 空状态 ============ */
+.el-empty { padding: 28px 0; }
+.el-empty__description p { color: var(--lo-text-muted); font-size: 13px; }
+
+/* ============ 场控三栏 ============ */
+.control-layout { display: flex; gap: 14px; height: calc(100vh - 108px); }
+.control-layout .col {
+  background: var(--lo-surface);
+  border-radius: var(--lo-radius);
+  border: 1px solid var(--lo-border);
+  box-shadow: var(--lo-shadow);
+  padding: 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.control-layout .col-left   { flex: 0 0 340px; }
+.control-layout .col-center { flex: 1; min-width: 0; }
+.control-layout .col-right  { flex: 0 0 320px; }
+
+.danmaku-line { padding: 4px 8px; border-radius: 4px; margin-bottom: 4px; font-size: 13px; line-height: 1.4; background: #f8f9fb; }
+.agent-log-line { padding: 6px 8px; border-left: 3px solid var(--lo-primary); background: #f3f7ff; margin-bottom: 6px; font-size: 12px; border-radius: 0 6px 6px 0; }
+.monitor-line { padding: 6px 8px; border-left: 3px solid var(--lo-warning); background: #fffaf0; margin-bottom: 6px; font-size: 12px; border-radius: 0 6px 6px 0; }
+
+.intent-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; color: #fff; }
+.intent-faq { background: #3b82f6; }
+.intent-coupon { background: #f59e0b; }
+.intent-stock { background: #22c55e; }
+.intent-human { background: #f43f5e; }
+.intent-filter { background: #94a3b8; }
+.intent-general { background: #8b5cf6; }
+
+.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 12px; }
+
+/* ============ 滚动条 ============ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #cfd6e4; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #b6c0d4; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ============ 骨架屏 ============ */
+.lo-skeleton {
+  background: linear-gradient(90deg, #eef1f7 25%, #f7f9fc 37%, #eef1f7 63%);
+  background-size: 400% 100%;
+  animation: lo-shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+@keyframes lo-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* ============ 响应式：窄屏收起三栏 ============ */
+@media (max-width: 1280px) {
+  .control-layout { flex-direction: column; height: auto; }
+  .control-layout .col-left,
+  .control-layout .col-center,
+  .control-layout .col-right { flex: none; width: 100%; }
+}
+
+/* ============ 响应式：手机端弹窗与内容 ============ */
+@media (max-width: 768px) {
+  .el-dialog { width: 92% !important; max-width: 92vw; margin-top: 8vh !important; }
+  .el-dialog__body { padding: 14px 16px !important; }
+  .el-dialog__header { padding: 16px 18px 4px !important; }
+  .page-head { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .kpi-card { padding: 14px 16px; }
+  .kpi-icon { width: 44px; height: 44px; font-size: 20px; border-radius: 12px; }
+  .kpi-value { font-size: 21px; }
+}
